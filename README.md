@@ -1,71 +1,140 @@
-# AI Job Hunter 🚀
+<div align="center">
+  
+  # 🎯 AI Job Hunter 🚀
+  
+  **Your Personal, 24/7 Automated Talent Agent**
 
-An automated job search pipeline that scrapes job postings, matches them against your specific skills and preferences, notifies you via Telegram, and displays the results in a local interactive Dashboard.
+  [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
+  [![Telegram](https://img.shields.io/badge/Telegram-Notifications-2CA5E0.svg?style=for-the-badge&logo=telegram&logoColor=white)](https://core.telegram.org/bots)
+  [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-## 🌟 Features
-- **Automated Job Scraping:** Scrapes job listings from reliable job board APIs (RemoteOK, Arbeitnow, Jobicy, and FindWork).
-- **Skill-Based Matching:** Uses custom regex word boundary logic to match job descriptions against your technical skills and calculates a relevance score.
-- **Telegram Notifications:** Sends real-time alerts to your personal Telegram via a Telegram Bot for high-scoring job matches.
-- **Interactive Dashboard:** Provides a local graphical web interface (`dashboard/index.html`) to visualize, filter, and track job postings.
-- **Local Database:** Silently stores job history via `database.py` so you continuously build an archive of matching job listings without duplicates.
-- **Automated Scheduling:** Includes scripts to easily set up automated background execution natively on Windows.
+  > *Stop scrolling endlessly through job boards. Let AI find, score, and deliver the perfect jobs directly to your phone.*
 
-## 📁 Project Structure
-```text
-.
-├── config.yaml                # Core configuration (Telegram tokens, user profile, skills)
-├── resume_knowledge.txt       # Your resume context text
-├── requirements.txt           # Python package dependencies
-├── run.bat                    # Batch script to execute the script manually
-├── setup_scheduler.ps1        # PowerShell script to automate running on a schedule
-├── dashboard/
-│   ├── index.html             # The frontend dashboard GUI
-│   └── data.js                # Auto-generated job data for the dashboard UI
-├── data/                      # Auto-generated folder containing the database and logs
-└── src/
-    ├── main.py                # Main orchestrator linking scraping, matching, and notifying
-    ├── database.py            # Local database operations handler
-    ├── matcher.py             # Rule-based skill matching and scoring engine
-    ├── notifier.py            # Telegram messaging integration
-    └── scrapers.py            # API implementations for the different job boards
+</div>
+
+---
+
+## ✨ Why AI Job Hunter?
+
+Looking for a job shouldn't be a full-time job. AI Job Hunter works while you sleep:
+- 🕷️ **Scrapes** top job boards automatically.
+- 🧠 **Analyzes** job descriptions against your unique skills & resume.
+- 📱 **Alerts** you instantly on Telegram with high-matching roles.
+- 📊 **Organizes** everything in a beautiful, local web dashboard.
+
+---
+
+## 🏗️ Architecture & Workflow
+
+Here is a visual breakdown of how the magic happens:
+
+```mermaid
+graph TD
+    subgraph Job Boards
+        A1[RemoteOK]
+        A2[Arbeitnow]
+        A3[Jobicy]
+        A4[FindWork]
+    end
+
+    A1 -.-> B
+    A2 -.-> B
+    A3 -.-> B
+    A4 -.-> B
+
+    B[🕸️ Scraper Engine] --> C{⚙️ Matcher Engine}
+    
+    C -->|Low Match| D[🗑️ Discard]
+    C -->|High Match ✨| E[(💾 Local Database)]
+    
+    E --> F[📱 Telegram Notifier]
+    E --> G[🖥️ Web Dashboard]
+
+    style B fill:#2b3137,stroke:#fff,stroke-width:2px,color:#fff
+    style C fill:#0366d6,stroke:#fff,stroke-width:2px,color:#fff
+    style E fill:#28a745,stroke:#fff,stroke-width:2px,color:#fff
+    style F fill:#2CA5E0,stroke:#fff,stroke-width:2px,color:#fff
+    style G fill:#f2a60c,stroke:#fff,stroke-width:2px,color:#000
 ```
 
-## ⚙️ Installation & Setup
+---
 
-### 1. Prerequisites
-- **Python 3.8+** installed on your system.
-- A **Telegram Bot Token** (Create one via [@BotFather](https://t.me/BotFather) on Telegram).
+## 🛠️ Features Detailed
 
-### 2. Install Dependencies
-From the project root directory, install all required packages:
+<details>
+<summary><b>🕵️‍♂️ Automated Job Scraping</b> <i>(Click to expand)</i></summary>
+Pulls fresh job listings periodically from trusted developer job board APIs (RemoteOK, Arbeitnow, Jobicy, and FindWork). Never miss an opportunity!
+</details>
+
+<details>
+<summary><b>🎯 Skill-Based AI Matching</b> <i>(Click to expand)</i></summary>
+Uses intelligent regex boundary tracking and keyword analysis to compare job descriptions directly to your configured technical skills. Gives every job a relevance percentage score!
+</details>
+
+<details>
+<summary><b>💬 Instant Telegram Notifications</b> <i>(Click to expand)</i></summary>
+When an 80%+ match is found, your personal Telegram bot buzzes you with the role, salary (if available), and a direct apply link.
+</details>
+
+<details>
+<summary><b>📈 Interactive Frontend Dashboard</b> <i>(Click to expand)</i></summary>
+A clean local tracking UI (`dashboard/index.html`). Filter by "Remote", search by title, and quickly visualize your active job pipeline securely on your own device.
+</details>
+
+---
+
+## 🚀 Quick Start Guide
+
+### 1️⃣ Prerequisites
+- **Python 3.8+** installed
+- A **Telegram Bot Token** (Get it free via [@BotFather](https://t.me/BotFather))
+
+### 2️⃣ Installation
+Grab the code and install dependencies:
 ```bash
+git clone https://github.com/Diwakar-odds/Ai_Job_Hunter.git
+cd Ai_Job_Hunter
 pip install -r requirements.txt
 ```
 
-### 3. Customize Your Profile
-Open `config.yaml` and configure it with your details:
-- **Telegram Credentials:** Insert your `bot_token` and `chat_id`. 
-  *(Tip: The script can attempt to auto-detect your `chat_id` if you send a message to your bot and leave it blank)*
-- **Contact Details:** Update with your name, email, GitHub, and LinkedIn.
-- **Job Targeting:** Carefully outline your `keywords`, `skills`, and `location_preferences` list so the matcher engine scores jobs accurately.
-- *(Optional)* Update `resume_knowledge.txt` to include more context about your work experience if utilized by future LLM matching updates.
+### 3️⃣ Configuration
+Copy `config.example.yaml` to `config.yaml` and add your details!
+```yaml
+# Add your Bot token:
+telegram:
+  bot_token: "YOUR_TELEGRAM_BOT_TOKEN"
+  chat_id: "" # Leave blank; it will auto-detect when you text the bot!
 
-### 4. Running the Pipeline
-You can test and run the agent manually by executing:
-```bash
-run.bat
+# Add your target skills:
+search:
+  keywords: ["Python", "React", "AI"]
+  skills: ["Python", "TypeScript", "FastAPI"]
 ```
-Alternatively, in your terminal:
+*(Pro-tip: Keep `resume_knowledge.txt` updated to help the bot understand your deeper context!)*
+
+### 4️⃣ Fire It Up! 🔥
+Run it manually to test:
 ```bash
+# Windows
+run.bat
+# Mac/Linux
 python src/main.py
 ```
 
-### 5. Accessing the Dashboard
-To see the jobs it has found and scored for you, simply double-click and open the following file in any web browser:
-> `dashboard/index.html`
+### 5️⃣ View Dashboard
+Open `dashboard/index.html` in your favorite web browser! 🌐
 
-The script automatically generates `dashboard/data.js` containing your matched jobs, so the dashboard will accurately reflect the most recent run.
+---
 
-## 🔄 Windows Background Automation
-Don't want to run it manually? You can schedule the pipeline to run perpetually in the background. 
-Simply Right-Click `setup_scheduler.ps1` and choose **Run with PowerShell**. This leverages the Windows Task Scheduler to execute the hunter at regular intervals.
+## ⏰ "Set It & Forget It" (Windows)
+
+Want it running silently in the background every day?
+1. Right-click **`setup_scheduler.ps1`**
+2. Click **Run with PowerShell**
+3. *Done!* The script now runs in the background continuously.
+
+---
+<div align="center">
+  <b>Built with ❤️ to hack the job search.</b><br>
+  <i>⭐ If this project helped you land an interview, please consider starring the repo! ⭐</i>
+</div>
