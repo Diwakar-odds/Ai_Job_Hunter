@@ -1,0 +1,42 @@
+DIWAKAR CHAURASIA
+Email: diwakar7412@gmail.com | Phone: +91 8765612405 | Location: Deoria, Uttar Pradesh
+
+PROFILE SUMMARY
+Motivated and fast-learning Computer Science Engineering student with strong foundations in software development, full-stack web development, and AI-powered applications. Proficient in React.js, Next.js, Python, Node.js, and modern development tools. Experienced in building scalable web applications, AI assistants, and real-world software solutions. Passionate about problem-solving, learning emerging technologies, and developing impactful products.
+
+TECHNICAL SKILLS
+Languages: Python, SQL, JavaScript, C++
+Frontend: React.js, Next.js, Angular, TypeScript, HTML5, CSS3
+Backend: Node.js, Express.js, FastAPI, Flask
+Databases: MySQL, PostgreSQL
+Data Analysis: SQL, Pandas, NumPy, EDA
+AI/ML: PyTorch, NLP, Generative AI, RLHF
+Tools: Git, GitHub, GitHub Actions, VS Code
+Concepts: REST APIs, Agile, OOPs, DBMS, Operating Systems
+
+TECHNICAL PROJECTS
+1. Brain Buddy | Python, FastAPI, PostgreSQL, PyTorch, RLHF
+   - AI Platform, REST APIs, PostgreSQL Database Design, User Authentication
+   - Reinforcement Learning from Human Feedback (RLHF), Personalized Recommendations
+
+2. AI Assistant | Python, Flask, NLP, React, LLMs
+   - Multi-LLM Integration, Speech Recognition, NLP Processing
+   - Task Automation, Voice Assistant, Conversational AI
+
+3. Smiley Food App | React.js, Node.js, PostgreSQL
+   - Full-Stack Web Application, Authentication, Role-Based Access Control
+   - REST APIs, Order Management System, Admin Dashboard, Database Management
+
+4. EcoHub | React.js, Node.js, PostgreSQL
+   - Full-Stack Web Application, REST APIs, Database Design, Responsive UI
+   - Sustainability Platform, User Management, PostgreSQL, Frontend & Backend Development
+
+EDUCATION
+B.Tech Computer Science Engineering - Kanpur Institute of Technology, Kanpur (AKTU) - 2023-Present
+Intermediate - Deoria Sr. Sec School, CBSE - 2022 - 73.8%
+Highschool - Kendriya Vidyalaya, Deoria, CBSE - 2020 - 87.4%
+
+CERTIFICATIONS
+- Software Engineer Intern Certification - HackerRank
+- SQL (Advanced) Certification - HackerRank
+- Data Science and Machine Learning - IIT Guwahati
