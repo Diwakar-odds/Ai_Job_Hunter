@@ -3,9 +3,11 @@ chat_bot.py - Two-Way Telegram Conversational Agent for AI Job Hunter.
 """
 
 import os
+import sys
 import yaml
 import logging
 import sqlite3
+import asyncio
 from pathlib import Path
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -68,13 +70,61 @@ if not gemini_api_key or gemini_api_key == "YOUR_GEMINI_API_KEY_HERE":
 else:
     genai.configure(api_key=gemini_api_key)
 
+def is_authorized(update: Update) -> bool:
+    chat_id = str(update.message.chat_id)
+    allowed_chat_id = str(config['telegram'].get('chat_id', ''))
+    if allowed_chat_id and chat_id != allowed_chat_id:
+        return False
+    return True
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
     await update.message.reply_html(
         rf"Hi {user.mention_html()}! I am your AI Job Hunter Agent 🤖. "
-        "Ask me about any recent jobs I've scraped, or ask me to research companies for you!"
+        "Ask me about any recent jobs I've scraped, or ask me to research companies for you!\n\n"
+        "<b>Available Commands:</b>\n"
+        "/hunt - Start a manual job hunt\n"
+        "/stats - View job database statistics"
     )
+
+async def hunt_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Trigger a manual job hunt."""
+    if not is_authorized(update):
+        await update.message.reply_text("Unauthorized user. Ignoring.")
+        return
+    await update.message.reply_text("🚀 Starting manual job hunt... I'll notify you when new jobs are found!")
+    try:
+        # Run main.py in the background
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, 'main.py',
+            cwd=str(ROOT / 'src')
+        )
+    except Exception as e:
+        await update.message.reply_text(f"Error starting hunt: {e}")
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show database stats."""
+    if not is_authorized(update):
+        await update.message.reply_text("Unauthorized user. Ignoring.")
+        return
+    db_path = ROOT / 'data' / 'jobs.db'
+    if not db_path.exists():
+        await update.message.reply_text("Database not found yet.")
+        return
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT status, COUNT(*) FROM jobs GROUP BY status")
+        rows = cursor.fetchall()
+        cursor.execute("SELECT COUNT(*) FROM jobs")
+        total = cursor.fetchone()[0]
+        stats_text = f"📊 *Job Database Stats*\nTotal Jobs: {total}\n"
+        for row in rows:
+            stats_text += f"- {row[0].capitalize()}: {row[1]}\n"
+        await update.message.reply_text(stats_text, parse_mode='Markdown')
+    except Exception as e:
+        await update.message.reply_text(f"Error reading stats: {e}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Process incoming messages through Gemini API."""
@@ -82,8 +132,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = str(update.message.chat_id)
     
     # Restrict to configured chat_id for security
-    allowed_chat_id = str(config['telegram'].get('chat_id', ''))
-    if allowed_chat_id and chat_id != allowed_chat_id:
+    if not is_authorized(update):
         await update.message.reply_text("Unauthorized user. Ignoring.")
         return
 
@@ -130,6 +179,8 @@ def main() -> None:
     application = Application.builder().token(bot_token).build()
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("hunt", hunt_command))
+    application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("🚀 AI Job Hunter Chat Bot is running... Send it a message on Telegram!")

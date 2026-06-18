@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="data.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -527,6 +528,71 @@ body::after {
   .pill-group { justify-content: center; }
   .sort-select { width: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   NEW ELEMENTS (Analytics, Ranges, Refresh)
+   ═══════════════════════════════════════════════════════════════ */
+.analytics-bar {
+  max-width: 1400px; margin: 28px auto 0;
+  padding: 0 clamp(16px, 4vw, 48px);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.chart-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  height: 250px;
+  position: relative;
+}
+
+.refresh-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-dim);
+  font-family: inherit; font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; transition: all var(--transition);
+}
+.refresh-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+.refresh-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); border-color: var(--border-hover); }
+
+.range-wrap {
+  display: flex; flex-direction: column; gap: 4px; flex: 1 1 120px;
+  background: var(--bg-card); padding: 6px 12px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border);
+}
+.score-slider {
+  -webkit-appearance: none; width: 100%; height: 4px; background: var(--border-hover);
+  border-radius: 2px; outline: none;
+}
+.score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--accent-1); cursor: pointer;
+  box-shadow: 0 0 10px var(--accent-1);
+}
+
+.copy-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  padding: 8px; border-radius: var(--radius-pill);
+  cursor: pointer; transition: all var(--transition);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+}
+.copy-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+.copy-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+.pagination {
+  text-align: center; padding: 20px 0; grid-column: 1 / -1;
+}
 </style>
 </head>
 <body>
@@ -537,6 +603,10 @@ body::after {
     <div class="header-inner">
       <div class="logo">🎯 <span>AI Job Hunter</span></div>
       <div class="header-right">
+        <button class="refresh-btn" id="refreshBtn" title="Refresh Data">
+          <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          Refresh
+        </button>
         <span class="live-dot"></span>
         <span id="lastUpdated">Updated —</span>
       </div>
@@ -545,6 +615,16 @@ body::after {
 
   <!-- ═══ STATS ═══ -->
   <section class="stats-bar" id="statsBar"></section>
+
+  <!-- ═══ ANALYTICS ═══ -->
+  <section class="analytics-bar" id="analyticsBar">
+    <div class="chart-container">
+      <canvas id="scoreChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="sourceChart"></canvas>
+    </div>
+  </section>
 
   <!-- ═══ FILTERS ═══ -->
   <section class="filter-bar">
@@ -558,6 +638,13 @@ body::after {
       <button class="pill-btn" data-status="viewed">🔵 Viewed</button>
       <button class="pill-btn" data-status="applied">🟣 Applied</button>
     </div>
+    <div class="range-wrap">
+      <label for="scoreSlider" style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Min Score: <span id="scoreValue" style="color:var(--text);">0</span></label>
+      <input type="range" id="scoreSlider" min="0" max="100" value="0" class="score-slider">
+    </div>
+    <select class="sort-select" id="sourceSelect">
+      <option value="all">🌐 All Sources</option>
+    </select>
     <select class="sort-select" id="sortSelect">
       <option value="score">⚡ Match Score</option>
       <option value="date">📅 Posted Date</option>
@@ -585,6 +672,13 @@ let lastUpdate = typeof LAST_UPDATED !== 'undefined' ? LAST_UPDATED : null;
 let currentSearch = '';
 let currentStatus = 'all';
 let currentSort   = 'score';
+let currentMinScore = 0;
+let currentSource = 'all';
+let currentPage = 1;
+const itemsPerPage = 12;
+
+let scoreChartInstance = null;
+let sourceChartInstance = null;
 
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
@@ -613,6 +707,85 @@ function scoreColor(score) {
   if (score >= 80) return 'green';
   if (score >= 60) return 'yellow';
   return 'red';
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+  }).catch(err => {
+    console.error('Could not copy text: ', err);
+  });
+}
+
+function renderCharts() {
+  const ctxScore = document.getElementById('scoreChart');
+  const ctxSource = document.getElementById('sourceChart');
+  if (!ctxScore || !ctxSource) return;
+
+  const scoreCounts = { '90+': 0, '70-89': 0, '50-69': 0, '<50': 0 };
+  jobs.forEach(j => {
+    const s = j.match_score || 0;
+    if (s >= 90) scoreCounts['90+']++;
+    else if (s >= 70) scoreCounts['70-89']++;
+    else if (s >= 50) scoreCounts['50-69']++;
+    else scoreCounts['<50']++;
+  });
+
+  if (scoreChartInstance) scoreChartInstance.destroy();
+  scoreChartInstance = new Chart(ctxScore.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(scoreCounts),
+      datasets: [{
+        label: 'Jobs by Score',
+        data: Object.values(scoreCounts),
+        backgroundColor: ['rgba(34,197,94,0.6)', 'rgba(234,179,8,0.6)', 'rgba(59,130,246,0.6)', 'rgba(239,68,68,0.6)'],
+        borderColor: ['var(--green)', 'var(--yellow)', 'var(--blue)', 'var(--red)'],
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: 'Match Score Distribution', color: '#94a3b8' } },
+      scales: {
+        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        x: { ticks: { color: '#64748b' }, grid: { display: false } }
+      }
+    }
+  });
+
+  const sourceCounts = {};
+  jobs.forEach(j => {
+    const src = j.source || 'Unknown';
+    sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+  });
+
+  const sourceSelect = document.getElementById('sourceSelect');
+  if (sourceSelect && sourceSelect.options.length <= 1) {
+    Object.keys(sourceCounts).forEach(src => {
+      const opt = document.createElement('option');
+      opt.value = src;
+      opt.textContent = src;
+      sourceSelect.appendChild(opt);
+    });
+  }
+
+  if (sourceChartInstance) sourceChartInstance.destroy();
+  sourceChartInstance = new Chart(ctxSource.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(sourceCounts),
+      datasets: [{
+        data: Object.values(sourceCounts),
+        backgroundColor: ['rgba(99,102,241,0.6)', 'rgba(168,85,247,0.6)', 'rgba(59,130,246,0.6)', 'rgba(234,179,8,0.6)', 'rgba(34,197,94,0.6)'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } }, title: { display: true, text: 'Jobs by Source', color: '#94a3b8' } }
+    }
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -645,8 +818,15 @@ function renderTimestamp() {
 /* ═══════════════════════════════════════════════════════════════
    RENDER — CARDS
    ═══════════════════════════════════════════════════════════════ */
-function renderCards() {
+function renderCards(append = false) {
+  if (!append) currentPage = 1;
   let filtered = [...jobs];
+
+  // Filters (Score & Source)
+  filtered = filtered.filter(j => (j.match_score || 0) >= currentMinScore);
+  if (currentSource !== 'all') {
+    filtered = filtered.filter(j => j.source === currentSource);
+  }
 
   // Search
   if (currentSearch) {
@@ -686,7 +866,10 @@ function renderCards() {
     return;
   }
 
-  grid.innerHTML = filtered.map((job, i) => {
+  const paginated = filtered.slice(0, currentPage * itemsPerPage);
+  const hasMore = paginated.length < filtered.length;
+
+  let html = paginated.map((job, i) => {
     const sc  = job.match_score || 0;
     const col = scoreColor(sc);
     const circ = 2 * Math.PI * 22; // circumference, r=22
@@ -728,10 +911,25 @@ function renderCards() {
 
       <div class="card-footer">
         <span class="posted-date">📅 ${formatDate(job.posted_date)}</span>
-        <a class="view-btn" href="${escAttr(job.url)}" target="_blank" rel="noopener">View Job ↗</a>
+        <div style="display:flex; gap:8px;">
+          <button class="copy-btn" onclick="copyToClipboard('${escAttr(job.url)}')" title="Copy Job Link">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+          <a class="view-btn" href="${escAttr(job.url)}" target="_blank" rel="noopener">View Job ↗</a>
+        </div>
       </div>
     </article>`;
   }).join('');
+
+  if (hasMore) {
+    html += `
+      <div class="pagination" id="pagination">
+        <button id="loadMoreBtn" class="pill-btn">Load More (${filtered.length - paginated.length} remaining)</button>
+      </div>
+    `;
+  }
+
+  grid.innerHTML = html;
 }
 
 function escHtml(s) {
@@ -748,7 +946,45 @@ function escAttr(s) {
 function init() {
   renderStats();
   renderTimestamp();
+  renderCharts();
   renderCards();
+
+  // Load More
+  const jobsGrid = document.getElementById('jobsGrid');
+  if (jobsGrid) {
+    jobsGrid.addEventListener('click', e => {
+      if (e.target.id === 'loadMoreBtn') {
+        currentPage++;
+        renderCards(true);
+      }
+    });
+  }
+
+  // Filters
+  const scoreSlider = document.getElementById('scoreSlider');
+  if (scoreSlider) {
+    scoreSlider.addEventListener('input', e => {
+      currentMinScore = parseInt(e.target.value, 10);
+      document.getElementById('scoreValue').textContent = currentMinScore;
+      renderCards();
+    });
+  }
+  
+  const sourceSelect = document.getElementById('sourceSelect');
+  if (sourceSelect) {
+    sourceSelect.addEventListener('change', e => {
+      currentSource = e.target.value;
+      renderCards();
+    });
+  }
+
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      refreshBtn.style.opacity = '0.5';
+      refreshData();
+    });
+  }
 
   // Search
   $('#searchInput').addEventListener('input', e => {
@@ -785,8 +1021,11 @@ function refreshData() {
   script.onload = () => {
     jobs = typeof JOBS_DATA !== 'undefined' ? [...JOBS_DATA] : [];
     lastUpdate = typeof LAST_UPDATED !== 'undefined' ? LAST_UPDATED : null;
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) refreshBtn.style.opacity = '1';
     renderStats();
     renderTimestamp();
+    renderCharts();
     renderCards();
     script.remove();
   };
