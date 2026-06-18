@@ -121,10 +121,10 @@ class JobMatcher:
         scored_jobs: list = []
 
         for job in jobs:
-            score, matched = self.score_job(job)
+            score, matched_skills = self.score_job(job)
             if score >= min_score:
                 job['match_score'] = score
-                job['skills_matched'] = ', '.join(matched)
+                job['skills_matched'] = ', '.join(matched_skills)
                 scored_jobs.append(job)
 
         # Sort by score descending

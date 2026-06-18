@@ -11,6 +11,13 @@ from typing import Optional
 
 import requests
 
+try:
+    from jobspy import scrape_jobs
+    import pandas as pd
+    JOBSPY_AVAILABLE = True
+except ImportError:
+    JOBSPY_AVAILABLE = False
+
 logger = logging.getLogger('JobHunter')
 
 # Common headers to identify ourselves politely
@@ -262,6 +269,123 @@ def scrape_findwork(keywords: list) -> list:
     return jobs
 
 
+def scrape_monster(keywords: list) -> list:
+    """Basic scraper for Monster.
+
+    Args:
+        keywords: List of search keyword strings.
+
+    Returns:
+        List of normalized job dictionaries.
+    """
+    logger.info('Scraping Monster (best-effort)...')
+    jobs = []
+    # Note: Monster uses heavy anti-bot protection and JS rendering.
+    # A true implementation requires Playwright/Selenium or a paid API.
+    # This is a placeholder for a basic HTTP request that usually gets blocked.
+    for keyword in keywords:
+        time.sleep(POLITE_DELAY)
+        url = f"https://www.monster.com/jobs/search?q={keyword.replace(' ', '+')}"
+        response = _safe_get(url)
+        if not response:
+            continue
+        # In a real scenario, you'd use BeautifulSoup here if the response was HTML
+        # and not a CAPTCHA challenge.
+        # soup = BeautifulSoup(response.text, 'html.parser')
+        # ... logic to extract jobs ...
+    
+    logger.info(f'Monster: found {len(jobs)} matching jobs (usually requires JS engine)')
+    return jobs
+
+
+def scrape_careerbuilder(keywords: list) -> list:
+    """Basic scraper for CareerBuilder.
+
+    Args:
+        keywords: List of search keyword strings.
+
+    Returns:
+        List of normalized job dictionaries.
+    """
+    logger.info('Scraping CareerBuilder (best-effort)...')
+    jobs = []
+    # Note: CareerBuilder uses heavy anti-bot protection and JS rendering.
+    # A true implementation requires Playwright/Selenium or a paid API.
+    for keyword in keywords:
+        time.sleep(POLITE_DELAY)
+        url = f"https://www.careerbuilder.com/jobs?keywords={keyword.replace(' ', '+')}"
+        response = _safe_get(url)
+        if not response:
+            continue
+        # Placeholder for BeautifulSoup logic
+        
+    logger.info(f'CareerBuilder: found {len(jobs)} matching jobs (usually requires JS engine)')
+    return jobs
+
+
+def scrape_jobspy_boards(keywords: list) -> list:
+    """Scrape jobs using python-jobspy for LinkedIn, Indeed, Glassdoor, ZipRecruiter.
+
+    Args:
+        keywords: List of search keyword strings.
+
+    Returns:
+        List of normalized job dictionaries.
+    """
+    if not JOBSPY_AVAILABLE:
+        logger.warning('JobSpy not available. Skipping Indeed, LinkedIn, Glassdoor, ZipRecruiter.')
+        return []
+
+    logger.info('Scraping with python-jobspy (LinkedIn, Indeed, Glassdoor, ZipRecruiter)...')
+    jobs = []
+    
+    # Use the first keyword as the main search term, or join them
+    search_term = " OR ".join(keywords) if keywords else "software engineer"
+
+    try:
+        df = scrape_jobs(
+            site_name=["indeed", "linkedin", "zip_recruiter", "glassdoor"],
+            search_term=search_term,
+            results_wanted=30,
+            hours_old=72, 
+            country_america=True
+        )
+        
+        if df.empty:
+            return jobs
+            
+        # Convert NaN to None for dict serialization
+        df = df.where(pd.notnull(df), None)
+        raw_jobs = df.to_dict('records')
+        
+        for item in raw_jobs:
+            title = str(item.get('title', ''))
+            company = str(item.get('company', ''))
+            description = str(item.get('description', ''))
+            
+            combined_text = f'{title} {company} {description}'
+            if keywords and not _matches_keywords(combined_text, keywords):
+                continue
+                
+            source_name = item.get('site', 'JobSpy').title()
+            
+            jobs.append({
+                'title': title,
+                'company': company,
+                'location': item.get('location', 'Remote'),
+                'url': item.get('job_url', ''),
+                'description': description[:2000],
+                'source': source_name,
+                'tags': item.get('job_type', ''),
+                'posted_date': str(item.get('date_posted', '')),
+            })
+    except Exception as e:
+        logger.warning(f'Error running python-jobspy: {e}')
+
+    logger.info(f'JobSpy: found {len(jobs)} matching jobs')
+    return jobs
+
+
 def run_all_scrapers(keywords: list) -> list:
     """Run all scrapers and return combined results.
 
@@ -278,6 +402,9 @@ def run_all_scrapers(keywords: list) -> list:
         ('Arbeitnow', scrape_arbeitnow),
         ('Jobicy', scrape_jobicy),
         ('FindWork', scrape_findwork),
+        ('JobSpy (LinkedIn/Indeed/Glassdoor/ZipRecruiter)', scrape_jobspy_boards),
+        ('Monster', scrape_monster),
+        ('CareerBuilder', scrape_careerbuilder),
     ]
 
     for name, scraper_fn in scrapers:
